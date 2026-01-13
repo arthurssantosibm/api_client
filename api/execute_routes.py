@@ -5,10 +5,8 @@ import mysql.connector
 
 criar_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-@criar_router.post("/")
+@criar_router.post("")
 async def insert_usuario(data: CriarConta):
-    conn = None
-    cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
