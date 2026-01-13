@@ -1,17 +1,20 @@
 from fastapi import APIRouter, HTTPException
 from api.connection import get_connection
 from schemas.schemas import CriarConta
+import mysql.connector # Importado para capturar erros específicos
 
-router = APIRouter()
+# 1. Ajuste no prefixo: Se o prefixo é "/usuarios", a rota abaixo se torna "/usuarios/usuarios"
+# Geralmente, deixamos o prefixo como "/usuarios" e o path como "/" ou apenas ""
+criar_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-insert_router = APIRouter(prefix="/db", tags=["db_querys"])
-
-@router.post("/insert_usuarios")
+@criar_router.post("/") # Alterado de "/usuarios" para "/" para evitar URL duplicada
 async def insert_usuario(data: CriarConta):
-    conn = get_connection()
-    cursor = conn.cursor()
-
+    conn = None
+    cursor = None
     try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
         cursor.execute(
             """
             INSERT INTO usuarios (nome, email, telefone, senha)
@@ -28,17 +31,28 @@ async def insert_usuario(data: CriarConta):
         conn.commit()
 
         return {
-            "status": "ok",
+            "status": "success",
             "message": "Usuário inserido com sucesso"
         }
 
-    except Exception as e:
-        conn.rollback()
+    except mysql.connector.Error as err: # Captura erro específico do MySQL
+        if conn:
+            conn.rollback()
         raise HTTPException(
             status_code=500,
-            detail="Erro ao inserir usuário"
+            detail=f"Erro no banco de dados: {err.msg}"
+        )
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro interno: {str(e)}"
         )
 
     finally:
-        cursor.close()
-        conn.close()
+        # Só tenta fechar se eles foram criados, evitando erro caso a conexão falhe de início
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
