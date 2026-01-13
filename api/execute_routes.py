@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from models.core.db_javer import get_connection
+from api.connection import get_connection
 from schemas.schemas import CriarConta
 
 router = APIRouter()
 
-@router.post("/usuarios")
+insert_router = APIRouter(prefix="/db", tags=["db_querys"])
+
+@router.post("/insert_usuarios")
 async def insert_usuario(data: CriarConta):
     conn = get_connection()
     cursor = conn.cursor()
@@ -30,7 +32,7 @@ async def insert_usuario(data: CriarConta):
             "message": "Usuário inserido com sucesso"
         }
 
-    except Exception:
+    except Exception as e:
         conn.rollback()
         raise HTTPException(
             status_code=500,

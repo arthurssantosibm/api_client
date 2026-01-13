@@ -1,14 +1,14 @@
 from dotenv import load_dotenv
 from pathlib import Path
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-from fastapi import FastAPI
-from api import execute_routes
+from execute_routes import router as execute_router
 
-app = FastAPI()
+app = FastAPI(title="Data API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,4 +18,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(execute_routes.router)
+app.include_router(execute_router)
