@@ -13,3 +13,10 @@ class LoginSchema(BaseModel):
     
     class Config:
         from_attributes = True
+        
+class UpdateUserSchema(BaseModel):
+    nome: str
+    email: EmailStr
+    telefone: str
+    current_password: Optional[str] = None
+    senha: Optional[str] = None
