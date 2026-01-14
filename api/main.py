@@ -7,6 +7,7 @@ load_dotenv(BASE_DIR / ".env")
 
 from fastapi import FastAPI
 from api.execute_routes import criar_router
+from api.execute_routes import login_router
 
 app = FastAPI()
 
@@ -19,4 +20,5 @@ app.add_middleware(
 )
 
 app.include_router(criar_router)
+app.include_router(login_router)
 

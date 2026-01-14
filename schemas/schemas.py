@@ -7,3 +7,9 @@ class CriarConta(BaseModel):
     email: EmailStr
     telefone: str
     senha: str
+    
+class LoginSchema(BaseModel):
+    email: EmailStr
+    
+    class Config:
+        from_attributes = True
