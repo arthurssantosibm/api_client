@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from api.execute_routes import criar_router
 from api.execute_routes import login_router
 from api.execute_routes import update_router
+from api.execute_routes import transacoes_router
 
 app = FastAPI()
 
@@ -23,4 +24,5 @@ app.add_middleware(
 app.include_router(criar_router)
 app.include_router(login_router)
 app.include_router(update_router)
+app.include_router(transacoes_router)
 

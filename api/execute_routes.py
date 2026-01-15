@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from api.connection import get_connection
-from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema
+from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoCreate
 from api.jwt import create_access_token, get_current_user_id
 import mysql.connector 
+import requests
 
 criar_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 login_router = APIRouter(prefix="/loginUsuarios", tags=["login"])
 update_router = APIRouter(prefix="/updateUsuarios", tags=["update"])
+transacoes_router = APIRouter(prefix="/transacoesUsuarios", tags=["transacoes"])
 
 @criar_router.post("")
 async def insert_usuario(data: CriarConta):
@@ -57,6 +59,7 @@ async def insert_usuario(data: CriarConta):
 
 
 DATA_API_URL = "http://127.0.0.1:8001"
+API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes"
 INTERNAL_KEY = "INTERNAL_SECRET"
 
 
@@ -151,3 +154,55 @@ async def update_usuario(user_id: int, data: UpdateUserSchema):
             cursor.close()
         if conn:
             conn.close()
+            
+@transacoes_router.post("")
+async def executar_transacao_data(
+    payload: dict,
+    x_internal_key: str = Header(...)
+):
+    if x_internal_key != INTERNAL_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    conn = get_connection()
+    conn.autocommit = False
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO transacoes
+                (email_origin, email_destination, valor, mensagem, create_time)
+            VALUES (%s, %s, %s, %s, NOW())
+            """,
+            (
+                payload["email_origin"],
+                payload["email_destination"],
+                payload["valor"],
+                payload.get("mensagem")
+            )
+        )
+
+        cursor.execute(
+            "UPDATE usuarios SET saldo_cc = saldo_cc - %s WHERE id = %s",
+            (payload["valor"], payload["user_origin_id"])
+        )
+
+        cursor.execute(
+            "UPDATE usuarios SET saldo_cc = saldo_cc + %s WHERE email = %s",
+            (payload["valor"], payload["email_destination"])
+        )
+
+        conn.commit()
+
+        return {"status": "ok"}
+
+    except mysql.connector.Error as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro no banco: {str(e)}"
+        )
+
+    finally:
+        cursor.close()
+        conn.close()
