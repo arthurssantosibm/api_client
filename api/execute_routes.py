@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from api.connection import get_connection
-from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload
+from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse
 from api.jwt import create_access_token, get_current_user_id
 import mysql.connector 
 import requests
@@ -9,6 +9,7 @@ criar_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 login_router = APIRouter(prefix="/loginUsuarios", tags=["login"])
 update_router = APIRouter(prefix="/updateUsuarios", tags=["update"])
 transacoes_router = APIRouter(prefix="/transacoesUsuarios", tags=["transacoes"])
+deposit_router = APIRouter(prefix="/deposito", tags=["deposito"])
 
 @criar_router.post("")
 async def insert_usuario(data: CriarConta):
@@ -203,6 +204,92 @@ async def executar_transacao_data(
         raise HTTPException(
             status_code=500,
             detail=f"Erro no banco: {str(e)}"
+        )
+
+    finally:
+        cursor.close()
+        conn.close()
+        
+        
+@deposit_router.post(
+    "",
+    response_model=DepositoDBResponse
+)
+async def realizar_deposito(
+    data: DepositoDBRequest,
+    x_internal_key: str = Header(..., alias="X-Internal-Key")
+):
+    # 🔒 Validação de chamada interna
+    if x_internal_key != INTERNAL_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    conn = get_connection()
+    conn.autocommit = False
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        if data.valor <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Valor inválido"
+            )
+
+        # 🔹 Buscar usuário pelo email
+        cursor.execute(
+            "SELECT id, saldo_cc FROM usuarios WHERE email = %s",
+            (data.email,)
+        )
+        user = cursor.fetchone()
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="Usuário não encontrado"
+            )
+
+        # 🔹 Atualizar saldo
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET saldo_cc = saldo_cc + %s
+            WHERE email = %s
+            """,
+            (data.valor, data.email)
+        )
+
+        # 🔹 (Opcional mas recomendado) registrar como transação
+        cursor.execute(
+            """
+            INSERT INTO transacoes
+                (email_origin, email_destination, valor, mensagem, create_time)
+            VALUES (%s, %s, %s, %s, NOW())
+            """,
+            (
+                "DEPOSITO",
+                data.email,
+                data.valor,
+                "Depósito em conta"
+            )
+        )
+
+        # 🔹 Buscar saldo atualizado
+        cursor.execute(
+            "SELECT saldo_cc FROM usuarios WHERE email = %s",
+            (data.email,)
+        )
+        saldo_atual = cursor.fetchone()["saldo_cc"]
+
+        conn.commit()
+
+        return DepositoDBResponse(
+            saldo_atual=saldo_atual
+        )
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro no banco de dados: {err.msg}"
         )
 
     finally:
