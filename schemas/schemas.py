@@ -21,7 +21,10 @@ class UpdateUserSchema(BaseModel):
     current_password: Optional[str] = None
     senha: Optional[str] = None
     
-class TransacaoCreate(BaseModel):
+
+class TransacaoDataPayload(BaseModel):
+    email_origin: EmailStr
+    user_origin_id: int
     email_destination: EmailStr
     valor: float
-    mensagem: str
+    mensagem: Optional[str] = None

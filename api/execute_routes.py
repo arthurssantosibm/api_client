@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from api.connection import get_connection
-from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoCreate
+from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload
 from api.jwt import create_access_token, get_current_user_id
 import mysql.connector 
 import requests
@@ -59,7 +59,7 @@ async def insert_usuario(data: CriarConta):
 
 
 DATA_API_URL = "http://127.0.0.1:8001"
-API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes"
+API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes/"
 INTERNAL_KEY = "INTERNAL_SECRET"
 
 
@@ -157,8 +157,8 @@ async def update_usuario(user_id: int, data: UpdateUserSchema):
             
 @transacoes_router.post("")
 async def executar_transacao_data(
-    payload: dict,
-    x_internal_key: str = Header(...)
+    payload: TransacaoDataPayload,
+    x_internal_key: str = Header(..., alias="X-Internal-Key")
 ):
     if x_internal_key != INTERNAL_KEY:
         raise HTTPException(status_code=403, detail="Acesso negado")
@@ -168,6 +168,7 @@ async def executar_transacao_data(
     cursor = conn.cursor(dictionary=True)
 
     try:
+        # 🔹 Registro da transação
         cursor.execute(
             """
             INSERT INTO transacoes
@@ -175,25 +176,26 @@ async def executar_transacao_data(
             VALUES (%s, %s, %s, %s, NOW())
             """,
             (
-                payload["email_origin"],
-                payload["email_destination"],
-                payload["valor"],
-                payload.get("mensagem")
+                payload.email_origin,
+                payload.email_destination,
+                payload.valor,
+                payload.mensagem
             )
         )
 
+        # 🔹 Debita usuário origem
         cursor.execute(
             "UPDATE usuarios SET saldo_cc = saldo_cc - %s WHERE id = %s",
-            (payload["valor"], payload["user_origin_id"])
+            (payload.valor, payload.user_origin_id)
         )
 
+        # 🔹 Credita usuário destino
         cursor.execute(
             "UPDATE usuarios SET saldo_cc = saldo_cc + %s WHERE email = %s",
-            (payload["valor"], payload["email_destination"])
+            (payload.valor, payload.email_destination)
         )
 
         conn.commit()
-
         return {"status": "ok"}
 
     except mysql.connector.Error as e:
