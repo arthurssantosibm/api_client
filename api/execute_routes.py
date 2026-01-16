@@ -219,7 +219,7 @@ async def realizar_deposito(
     data: DepositoDBRequest,
     x_internal_key: str = Header(..., alias="X-Internal-Key")
 ):
-    # 🔒 Validação de chamada interna
+
     if x_internal_key != INTERNAL_KEY:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
@@ -291,3 +291,4 @@ async def realizar_deposito(
     finally:
         cursor.close()
         conn.close()
+
