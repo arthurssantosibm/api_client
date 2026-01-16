@@ -11,6 +11,12 @@ update_router = APIRouter(prefix="/updateUsuarios", tags=["update"])
 transacoes_router = APIRouter(prefix="/transacoesUsuarios", tags=["transacoes"])
 deposit_router = APIRouter(prefix="/deposito", tags=["deposito"])
 
+DATA_API_URL = "http://127.0.0.1:8001"
+API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes/"
+INTERNAL_KEY = "INTERNAL_SECRET"
+
+
+# BLOCO DE CRIAR CONTA
 @criar_router.post("")
 async def insert_usuario(data: CriarConta):
     try:
@@ -58,13 +64,7 @@ async def insert_usuario(data: CriarConta):
         if conn:
             conn.close()
 
-
-DATA_API_URL = "http://127.0.0.1:8001"
-API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes/"
-INTERNAL_KEY = "INTERNAL_SECRET"
-
-
-
+# BLOCO DE LOGIN
 @login_router.post("")
 async def login_usuario(
     data: LoginSchema,
@@ -95,7 +95,7 @@ async def login_usuario(
     return {"id": user["id"], "senha": user["senha"]}
 
             
-            
+# BLOCO DE UPDATE USUÁRIO         
 @update_router.put("/{user_id}")
 async def update_usuario(user_id: int, data: UpdateUserSchema):
     conn = get_connection()
@@ -130,7 +130,7 @@ async def update_usuario(user_id: int, data: UpdateUserSchema):
         cursor.close()
         conn.close()
 
-
+# BLOCO DE SUSPENDER CONTA
 @update_router.put("/suspender/{user_id}")
 async def suspender_conta(
     user_id: int, 
@@ -149,8 +149,7 @@ async def suspender_conta(
         cursor.close()
         conn.close()
 
-
-
+# BLOCO DE REATIVAR CONTA POR E-MAIL
 @update_router.put("/reativar_por_email/")
 async def reativar_conta_por_email(
     data: ReativarSchema = Body(...),
@@ -182,10 +181,7 @@ async def reativar_conta_por_email(
         cursor.close()
         conn.close()
 
-
-
-
-
+# BLOCO DE EXECUTAR TRANSAÇÃO
 @transacoes_router.post("")
 async def executar_transacao_data(
     payload: TransacaoDataPayload,
@@ -240,7 +236,7 @@ async def executar_transacao_data(
         cursor.close()
         conn.close()
         
-        
+# BLOCO DE REALIZAR DEPÓSITO
 @deposit_router.post(
     "",
     response_model=DepositoDBResponse
@@ -321,4 +317,3 @@ async def realizar_deposito(
     finally:
         cursor.close()
         conn.close()
-
