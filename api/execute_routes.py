@@ -234,7 +234,6 @@ async def realizar_deposito(
                 detail="Valor inválido"
             )
 
-        # 🔹 Buscar usuário pelo email
         cursor.execute(
             "SELECT id, saldo_cc FROM usuarios WHERE email = %s",
             (data.email,)
@@ -247,7 +246,6 @@ async def realizar_deposito(
                 detail="Usuário não encontrado"
             )
 
-        # 🔹 Atualizar saldo
         cursor.execute(
             """
             UPDATE usuarios
@@ -257,7 +255,6 @@ async def realizar_deposito(
             (data.valor, data.email)
         )
 
-        # 🔹 (Opcional mas recomendado) registrar como transação
         cursor.execute(
             """
             INSERT INTO transacoes
@@ -272,7 +269,6 @@ async def realizar_deposito(
             )
         )
 
-        # 🔹 Buscar saldo atualizado
         cursor.execute(
             "SELECT saldo_cc FROM usuarios WHERE email = %s",
             (data.email,)
