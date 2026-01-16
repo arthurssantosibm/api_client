@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, Body, HTTPException, Depends, Header
 from api.connection import get_connection
-from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse
+from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse, ReativarSchema
 from api.jwt import create_access_token, get_current_user_id
 import mysql.connector 
 import requests
@@ -64,48 +64,44 @@ API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes/"
 INTERNAL_KEY = "INTERNAL_SECRET"
 
 
+
 @login_router.post("")
-async def login_usuario(data: LoginSchema):
-    try:
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+async def login_usuario(
+    data: LoginSchema,
+    x_internal_key: str = Header(..., alias="X-Internal-Key")
+):
 
-        cursor.execute(
-            "SELECT id, senha FROM usuarios WHERE email = %s",
-            (data.email,)
-        )
+    if x_internal_key != INTERNAL_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
 
-        user = cursor.fetchone()
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
 
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="Usuário não encontrado"
-            )
+    cursor.execute(
+        "SELECT id, senha, correntista FROM usuarios WHERE email = %s",
+        (data.email,)
+    )
+    user = cursor.fetchone()
 
-        return {
-            "id": user["id"],
-            "senha": user["senha"]
-        }
+    cursor.close()
+    conn.close()
 
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if user["correntista"] == 0:
+        raise HTTPException(status_code=403, detail="CONTA_INATIVA")
+
+    return {"id": user["id"], "senha": user["senha"]}
+
             
             
 @update_router.put("/{user_id}")
 async def update_usuario(user_id: int, data: UpdateUserSchema):
-
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
     try:
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute(
-            "SELECT id FROM usuarios WHERE id = %s",
-            (user_id,)
-        )
+        cursor.execute("SELECT id FROM usuarios WHERE id = %s", (user_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
@@ -116,13 +112,7 @@ async def update_usuario(user_id: int, data: UpdateUserSchema):
                 SET nome=%s, email=%s, telefone=%s, senha=%s
                 WHERE id=%s
                 """,
-                (
-                    data.nome,
-                    data.email,
-                    data.telefone,
-                    data.senha,
-                    user_id
-                )
+                (data.nome, data.email, data.telefone, data.senha, user_id)
             )
         else:
             cursor.execute(
@@ -131,31 +121,71 @@ async def update_usuario(user_id: int, data: UpdateUserSchema):
                 SET nome=%s, email=%s, telefone=%s
                 WHERE id=%s
                 """,
-                (
-                    data.nome,
-                    data.email,
-                    data.telefone,
-                    user_id
-                )
+                (data.nome, data.email, data.telefone, user_id)
             )
 
         conn.commit()
         return {"message": "Dados atualizados com sucesso"}
+    finally:
+        cursor.close()
+        conn.close()
 
-    except mysql.connector.Error as err:
-        if conn:
-            conn.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro no banco de dados: {err.msg}"
+
+@update_router.put("/suspender/{user_id}")
+async def suspender_conta(
+    user_id: int, 
+    x_internal_key: str = Header(..., alias="X-Internal-Key")
+):
+    if x_internal_key != INTERNAL_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE usuarios SET correntista = 0 WHERE id = %s", (user_id,))
+        conn.commit()
+        return {"message": "Conta suspensa com sucesso"}
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+@update_router.put("/reativar_por_email/")
+async def reativar_conta_por_email(
+    data: ReativarSchema = Body(...),
+    x_internal_key: str = Header(..., alias="X-Internal-Key")
+):
+    if x_internal_key != INTERNAL_KEY:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    email = data.email.strip().lower()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE usuarios SET correntista = 1 WHERE LOWER(email) = %s",
+            (email,)
         )
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="E-mail não encontrado"
+            )
+
+        return {"message": "Conta reativada com sucesso"}
 
     finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-            
+        cursor.close()
+        conn.close()
+
+
+
+
+
 @transacoes_router.post("")
 async def executar_transacao_data(
     payload: TransacaoDataPayload,

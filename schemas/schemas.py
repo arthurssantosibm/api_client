@@ -8,11 +8,15 @@ class CriarConta(BaseModel):
     telefone: str
     senha: str
     
-class LoginSchema(BaseModel):
+class LoginSchema(BaseModel, extra="ignore"):
+    email: EmailStr
+    senha: str
+        
+
+class ReativarSchema(BaseModel):
     email: EmailStr
     
-    class Config:
-        from_attributes = True
+
         
 class UpdateUserSchema(BaseModel):
     nome: str
