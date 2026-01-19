@@ -98,8 +98,12 @@ api_data/
 ---
 
 ## ⚙️ Inicialização do Projeto
-
+## Executar no terminal
+```bash
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
 ### 1️⃣ Criar ambiente virtual
+
 
 ```bash
 python -m venv venv
