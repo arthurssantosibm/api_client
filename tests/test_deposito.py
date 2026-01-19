@@ -6,8 +6,8 @@ def test_realizar_deposito_sucesso(client):
         mock_cursor = MagicMock()
 
         mock_cursor.fetchone.side_effect = [
-            {"id": 1, "saldo_cc": 100},  # busca usuário
-            {"saldo_cc": 200}           # saldo atualizado
+            {"id": 1, "saldo_cc": 100}, 
+            {"saldo_cc": 200}           
         ]
 
         mock_db.cursor.return_value = mock_cursor
