@@ -35,7 +35,7 @@ class TransacaoDataPayload(BaseModel):
     
 class DepositoDBRequest(BaseModel):
     email: EmailStr
-    valor: float = Field(..., gt=0)
+    valor: float
     
 class DepositoDBResponse(BaseModel):
     saldo_atual: float

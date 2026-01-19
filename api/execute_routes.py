@@ -19,6 +19,8 @@ INTERNAL_KEY = "INTERNAL_SECRET"
 # BLOCO DE CRIAR CONTA
 @criar_router.post("")
 async def insert_usuario(data: CriarConta):
+    conn = None
+    cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
@@ -255,10 +257,8 @@ async def realizar_deposito(
 
     try:
         if data.valor <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Valor inválido"
-            )
+            raise HTTPException(status_code=400, detail="Valor inválido")
+
 
         cursor.execute(
             "SELECT id, saldo_cc FROM usuarios WHERE email = %s",
