@@ -11,6 +11,7 @@ from api.execute_routes import login_router
 from api.execute_routes import update_router
 from api.execute_routes import transacoes_router
 from api.execute_routes import deposit_router
+from api.execute_routes import saque_router
 
 app = FastAPI()
 
@@ -27,3 +28,4 @@ app.include_router(login_router)
 app.include_router(update_router)
 app.include_router(transacoes_router)
 app.include_router(deposit_router)
+app.include_router(saque_router)

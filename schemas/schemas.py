@@ -39,3 +39,10 @@ class DepositoDBRequest(BaseModel):
     
 class DepositoDBResponse(BaseModel):
     saldo_atual: float
+    
+class SaqueDBRequest(BaseModel):
+    email: EmailStr
+    valor: float
+    
+class SaqueDBResponse(BaseModel):
+    saldo_atual: float
