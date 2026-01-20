@@ -95,10 +95,6 @@ async def login_usuario(
         raise HTTPException(status_code=403, detail="CONTA_INATIVA")
 
     return {"id": user["id"], "senha": user["senha"]}
-
-
-
-
             
 # BLOCO DE UPDATE USUÁRIO         
 @update_router.put("/{user_id}")
