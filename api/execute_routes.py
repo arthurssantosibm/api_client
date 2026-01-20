@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Body, HTTPException, Depends, Header
+from fastapi import APIRouter, Body, HTTPException, Depends, Header, requests
 from api.connection import get_connection
 from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse, ReativarSchema
 from api.jwt import create_access_token, get_current_user_id
-import mysql.connector 
-import requests
+import mysql.connector
+from jose import jwt, JWTError
 
 criar_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 login_router = APIRouter(prefix="/loginUsuarios", tags=["login"])
@@ -95,6 +95,9 @@ async def login_usuario(
         raise HTTPException(status_code=403, detail="CONTA_INATIVA")
 
     return {"id": user["id"], "senha": user["senha"]}
+
+
+
 
             
 # BLOCO DE UPDATE USUÁRIO         
