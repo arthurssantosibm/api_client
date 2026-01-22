@@ -102,32 +102,55 @@ async def login_usuario(
 async def update_usuario(user_id: int, data: UpdateUserSchema):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
+
     try:
-        cursor.execute("SELECT id FROM usuarios WHERE id = %s", (user_id,))
+        cursor.execute(
+            "SELECT id FROM usuarios WHERE id = %s",
+            (user_id,)
+        )
         if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-        if data.senha:
-            cursor.execute(
-                """
-                UPDATE usuarios
-                SET nome=%s, email=%s, telefone=%s, senha=%s
-                WHERE id=%s
-                """,
-                (data.nome, data.email, data.telefone, data.senha, user_id)
-            )
-        else:
-            cursor.execute(
-                """
-                UPDATE usuarios
-                SET nome=%s, email=%s, telefone=%s
-                WHERE id=%s
-                """,
-                (data.nome, data.email, data.telefone, user_id)
+            raise HTTPException(
+                status_code=404,
+                detail="Usuário não encontrado"
             )
 
+        fields = []
+        values = []
+
+        if data.nome is not None:
+            fields.append("nome=%s")
+            values.append(data.nome)
+
+        if data.email is not None:
+            fields.append("email=%s")
+            values.append(data.email)
+
+        if data.telefone is not None:
+            fields.append("telefone=%s")
+            values.append(data.telefone)
+
+        if data.senha is not None:
+            fields.append("senha=%s")
+            values.append(data.senha)
+
+        if not fields:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhum dado para atualizar"
+            )
+
+        query = f"""
+            UPDATE usuarios
+            SET {", ".join(fields)}
+            WHERE id=%s
+        """
+
+        values.append(user_id)
+        cursor.execute(query, tuple(values))
         conn.commit()
+
         return {"message": "Dados atualizados com sucesso"}
+
     finally:
         cursor.close()
         conn.close()
