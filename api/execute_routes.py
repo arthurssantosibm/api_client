@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Body, HTTPException, Depends, Header, requests
+from fastapi import APIRouter, Body, HTTPException, Depends, Header
 from api.connection import get_connection
-from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse, ReativarSchema, SaqueDBRequest, SaqueDBResponse
+from schemas.schemas import CriarConta, LoginSchema, UpdateUserSchema, TransacaoDataPayload, DepositoDBRequest, DepositoDBResponse, ReativarSchema, SaqueDBRequest, SaqueDBResponse, TransactionCreateSchema
 from api.jwt import create_access_token, get_current_user_id
 import mysql.connector
 from jose import jwt, JWTError
@@ -11,6 +11,7 @@ update_router = APIRouter(prefix="/updateUsuarios", tags=["update"])
 transacoes_router = APIRouter(prefix="/transacoesUsuarios", tags=["transacoes"])
 deposit_router = APIRouter(prefix="/deposito", tags=["deposito"])
 saque_router = APIRouter(prefix="/saque", tags=["saque"])
+invest_router = APIRouter(prefix="/invest", tags=["invest"])
 
 DATA_API_URL = "http://127.0.0.1:8001"
 API_CORE_VALIDATE_URL = "http://127.0.0.1:8000/transacoes/transacoes/"
@@ -423,3 +424,43 @@ async def realizar_saque(
     finally:
         cursor.close()
         conn.close()
+
+@invest_router.post("/create", status_code=201)
+async def criar_transacao(data: TransactionCreateSchema):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO financial_transactions (
+                client_id, email, valor_investido,
+                nome_ativo, valor_atual,
+                rentabilidade, tipo_ativo
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            data.client_id,
+            data.email,
+            data.valor_investido,
+            data.nome_ativo,
+            data.valor_atual,
+            data.rentabilidade,
+            data.tipo_ativo
+        ))
+
+        # 2️⃣ Atualizar patrimônio total
+        cursor.execute("""
+            UPDATE invest_client
+            SET patrimonio_total = patrimonio_total + %s
+            WHERE client_id = %s
+        """, (
+            data.valor_atual,
+            data.client_id
+        ))
+
+        conn.commit()
+
+        return {"message": "Transação registrada"}
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, str(e))
