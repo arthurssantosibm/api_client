@@ -431,29 +431,38 @@ async def criar_transacao(data: TransactionCreateSchema):
     cursor = conn.cursor()
 
     try:
+        print("PAYLOAD RECEBIDO:", data.dict())
+
         cursor.execute("""
-            INSERT INTO financial_transactions (
-                client_id, email, valor_investido,
-                nome_ativo, valor_atual,
-                rentabilidade, tipo_ativo
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    INSERT INTO financial_transactions (
+                client_id,
+                email,
+                ticker,
+                nome_ativo,
+                tipo_ativo,
+                quantidade,
+                valor_investido,
+                valor_atual,
+                rentabilidade
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
             data.client_id,
             data.email,
-            data.valor_investido,
+            data.ticker,
             data.nome_ativo,
-            data.valor_atual,
-            data.rentabilidade,
-            data.tipo_ativo
+            data.tipo_ativo,
+            float(data.quantidade),
+            float(data.valor_investido),
+            float(data.valor_atual),
+            float(data.rentabilidade)
         ))
 
-        # 2️⃣ Atualizar patrimônio total
         cursor.execute("""
             UPDATE invest_client
             SET patrimonio_total = patrimonio_total + %s
             WHERE client_id = %s
         """, (
-            data.valor_atual,
+            data.valor_investido,
             data.client_id
         ))
 
@@ -463,4 +472,7 @@ async def criar_transacao(data: TransactionCreateSchema):
 
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()

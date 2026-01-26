@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, PositiveFloat
+from decimal import Decimal
 from datetime import datetime
 from typing import Optional
 
@@ -48,51 +49,17 @@ class SaqueDBResponse(BaseModel):
     saldo_atual: float
 
 
+
 class TransactionCreateSchema(BaseModel):
-    client_id: int = Field(
-        ...,
-        description="ID do usuário (FK usuarios.id)"
-    )
+    client_id: int
+    email: EmailStr
 
-    email: str = Field(
-        ...,
-        max_length=255,
-        description="Email do cliente que realizou a compra"
-    )
+    ticker: str
+    nome_ativo: str
+    tipo_ativo: str
 
-    nome_ativo: str = Field(
-        ...,
-        max_length=150,
-        description="Nome do ativo adquirido"
-    )
+    quantidade: Decimal
 
-    tipo_ativo: str = Field(
-        ...,
-        max_length=50,
-        description="Tipo do ativo (cripto, renda fixa, fundo, ações)"
-    )
-
-    quantidade: PositiveFloat = Field(
-        ...,
-        description="Quantidade de cotas/unidades compradas"
-    )
-
-    preco_unitario: PositiveFloat = Field(
-        ...,
-        description="Preço unitário do ativo no momento da compra"
-    )
-
-    valor_investido: PositiveFloat = Field(
-        ...,
-        description="Valor total pago (preco_unitario * quantidade)"
-    )
-
-    valor_atual: PositiveFloat = Field(
-        ...,
-        description="Valor atual do ativo no momento da compra"
-    )
-
-    rentabilidade: Optional[float] = Field(
-        default=0,
-        description="Rentabilidade inicial (0 no momento da compra)"
-    )
+    valor_investido: Decimal
+    valor_atual: Decimal
+    rentabilidade: Decimal
